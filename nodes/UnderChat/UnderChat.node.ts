@@ -170,7 +170,7 @@ export class UnderChat implements INodeType {
 					const phoneDdi = this.getNodeParameter('phoneDdi', itemIndex) as string;
 					const phone = this.getNodeParameter('phone', itemIndex) as string;
 					const workerId = this.getNodeParameter('workerId', itemIndex, '') as string;
-					await underChatApiRequest.call(
+					const response = await underChatApiRequest.call(
 						this,
 						'GET',
 						'/chat/contacts/by-phone',
@@ -186,7 +186,7 @@ export class UnderChat implements INodeType {
 					const extra = parseJsonObject(
 						this.getNodeParameter('additionalFields', itemIndex, '{}') as string,
 					);
-					const response = await underChatApiRequest.call(
+					await underChatApiRequest.call(
 						this,
 						'POST',
 						'/chat/contacts',

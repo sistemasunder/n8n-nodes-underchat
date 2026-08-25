@@ -1,0 +1,49 @@
+{
+  "name": "n8n-nodes-underchat",
+  "version": "0.1.0",
+  "description": "Community Node do n8n para automações com a UnderChat",
+  "author": {
+    "name": "UnderChat",
+    "email": "contato@underchat.com.br"
+  },
+  "license": "MIT",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "underchat",
+    "whatsapp",
+    "automation"
+  ],
+  "homepage": "https://underchat.com.br",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/underchat/n8n-nodes-underchat.git"
+  },
+  "scripts": {
+    "build": "n8n-node build",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "prepublishOnly": "n8n-node prerelease",
+    "release": "n8n-node release"
+  },
+  "files": ["dist"],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "credentials": ["dist/credentials/UnderChatApi.credentials.js"],
+    "nodes": ["dist/nodes/UnderChat/UnderChat.node.js"]
+  },
+  "devDependencies": {
+    "@n8n/node-cli": "*",
+    "eslint": "9.39.4",
+    "prettier": "3.8.3",
+    "typescript": "5.9.3"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

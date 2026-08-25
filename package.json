@@ -17,7 +17,7 @@
   "homepage": "https://underchat.com.br",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/underchat/n8n-nodes-underchat.git"
+    "url": "git+https://github.com/sistemasunder/n8n-nodes-underchat.git"
   },
   "scripts": {
     "build": "n8n-node build",

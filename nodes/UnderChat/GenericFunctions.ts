@@ -61,6 +61,25 @@ export function parseJsonObject(value: string): IDataObject {
 	return parsed as IDataObject;
 }
 
+export function isNotFoundError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const candidate = error as {
+		httpCode?: string | number;
+		statusCode?: string | number;
+		response?: { status?: string | number; statusCode?: string | number };
+		cause?: { response?: { status?: string | number; statusCode?: string | number } };
+	};
+	const statuses = [
+		candidate.httpCode,
+		candidate.statusCode,
+		candidate.response?.status,
+		candidate.response?.statusCode,
+		candidate.cause?.response?.status,
+		candidate.cause?.response?.statusCode,
+	];
+	return statuses.some((status) => String(status) === '404');
+}
+
 export function parseJsonArray(value: string): IDataObject[] {
 	if (!value.trim()) return [];
 	const parsed = JSON.parse(value) as unknown;

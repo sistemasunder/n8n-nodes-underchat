@@ -9,6 +9,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import {
 	firstRecord,
 	getOpaqueId,
+	isNotFoundError,
 	parseJsonArray,
 	parseJsonObject,
 	responseData,
@@ -169,7 +170,7 @@ export class UnderChat implements INodeType {
 					const phoneDdi = this.getNodeParameter('phoneDdi', itemIndex) as string;
 					const phone = this.getNodeParameter('phone', itemIndex) as string;
 					const workerId = this.getNodeParameter('workerId', itemIndex, '') as string;
-					const response = await underChatApiRequest.call(
+					await underChatApiRequest.call(
 						this,
 						'GET',
 						'/chat/contacts/by-phone',
@@ -191,7 +192,14 @@ export class UnderChat implements INodeType {
 						'/chat/contacts',
 						withoutEmptyValues({ name, phone_ddi: phoneDdi, phone, worker_id: workerId, ...extra }),
 					);
-					result = responseData(response);
+					const foundResponse = await underChatApiRequest.call(
+						this,
+						'GET',
+						'/chat/contacts/by-phone',
+						{},
+						withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
+					);
+					result = responseData(foundResponse);
 				} else if (operation === 'sendText') {
 					const chatId = this.getNodeParameter('chatId', itemIndex) as string;
 					const message = this.getNodeParameter('message', itemIndex) as string;
@@ -225,26 +233,40 @@ export class UnderChat implements INodeType {
 					const extra = parseJsonObject(
 						this.getNodeParameter('additionalFields', itemIndex, '{}') as string,
 					);
-					const foundResponse = await underChatApiRequest.call(
-						this,
-						'GET',
-						'/chat/contacts/by-phone',
-						{},
-						withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
-					);
-					let contact = firstRecord(foundResponse);
+					let contact;
+					try {
+						const foundResponse = await underChatApiRequest.call(
+							this,
+							'GET',
+							'/chat/contacts/by-phone',
+							{},
+							withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
+						);
+						contact = firstRecord(foundResponse);
+					} catch (error) {
+						if (!isNotFoundError(error)) {
+							throw new NodeOperationError(this.getNode(), error as Error, { itemIndex });
+						}
+					}
 					let created = false;
 
 					if (!getOpaqueId(contact, ['contact_id', 'id'])) {
 						if (!createIfMissing) throw new NodeOperationError(this.getNode(), 'Contato não encontrado', { itemIndex });
 						if (!name) throw new NodeOperationError(this.getNode(), 'Informe o nome para criar o contato', { itemIndex });
-						const createdResponse = await underChatApiRequest.call(
+						await underChatApiRequest.call(
 							this,
 							'POST',
 							'/chat/contacts',
 							withoutEmptyValues({ name, phone_ddi: phoneDdi, phone, worker_id: workerId, ...extra }),
 						);
-						contact = firstRecord(createdResponse);
+						const refreshedResponse = await underChatApiRequest.call(
+							this,
+							'GET',
+							'/chat/contacts/by-phone',
+							{},
+							withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
+						);
+						contact = firstRecord(refreshedResponse);
 						created = true;
 					}
 

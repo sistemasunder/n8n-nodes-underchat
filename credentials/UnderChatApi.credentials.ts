@@ -10,7 +10,7 @@ export class UnderChatApi implements ICredentialType {
 
 	displayName = 'UnderChat API';
 
-	icon = 'file:../nodes/UnderChat/underchat.svg' as const;
+	icon = 'file:../nodes/UnderChat/underchat-logo.svg' as const;
 
 	documentationUrl = 'https://docs.underchat.com.br/guias/primeiros-passos';
 

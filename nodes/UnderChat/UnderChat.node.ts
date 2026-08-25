@@ -23,7 +23,7 @@ export class UnderChat implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'UnderChat',
 		name: 'underChat',
-		icon: { light: 'file:underchat.svg', dark: 'file:underchat.dark.svg' },
+		icon: { light: 'file:underchat-logo.svg', dark: 'file:underchat-logo.dark.svg' },
 		group: ['transform'],
 		version: 1,
 		description: 'Gerencie contatos e envie mensagens pela UnderChat',

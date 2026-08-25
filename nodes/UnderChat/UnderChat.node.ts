@@ -190,7 +190,7 @@ export class UnderChat implements INodeType {
 		icon: { light: 'file:underchat-logo.svg', dark: 'file:underchat-logo.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		description: 'Gerencie contatos e envie mensagens pela UnderChat',
+		description: 'Gerencie contatos, atendimentos e mensagens pela UnderChat',
 		subtitle: '={{$parameter["operation"]}}',
 		defaults: { name: 'UnderChat' },
 		inputs: [NodeConnectionTypes.Main],
@@ -207,7 +207,7 @@ export class UnderChat implements INodeType {
 					{ name: 'Contato', value: 'contact' },
 					{ name: 'Listar', value: 'directory' },
 					{ name: 'Mensagem', value: 'message' },
-					{ name: 'Transferência', value: 'chat' },
+					{ name: 'Atendimento', value: 'chat' },
 				],
 				default: 'message',
 			},
@@ -259,6 +259,11 @@ export class UnderChat implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
+					{
+						name: 'Entrar No Atendimento',
+						value: 'enterAttendance',
+						action: 'Entrar no atendimento',
+					},
 					{
 						name: 'Transferir Para Setor Ou Usuário',
 						value: 'transferChat',
@@ -472,7 +477,12 @@ export class UnderChat implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				displayOptions: showFor(['sendText', 'sendOfficialTemplate', 'transferChat']),
+				displayOptions: showFor([
+					'enterAttendance',
+					'sendText',
+					'sendOfficialTemplate',
+					'transferChat',
+				]),
 			},
 			{
 				displayName: 'Mensagem',
@@ -776,6 +786,17 @@ export class UnderChat implements INodeType {
 						chat,
 						message: responseData(messageResponse),
 					};
+				} else if (operation === 'enterAttendance') {
+					const chatId = this.getNodeParameter('chatId', itemIndex) as string;
+					const response = await underChatApiRequest.call(
+						this,
+						'PATCH',
+						`/chat/${chatId}/status`,
+						{ status: 'in_chat' },
+						{},
+						executorId,
+					);
+					result = responseData(response);
 				} else if (operation === 'transferChat') {
 					const chatId = this.getNodeParameter('chatId', itemIndex) as string;
 					const destinationType = this.getNodeParameter(

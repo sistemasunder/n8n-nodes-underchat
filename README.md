@@ -16,6 +16,11 @@ Community Node do n8n para integrar workflows à API pública da UnderChat.
 Os campos de executor, usuário, setor e worker oferecem busca na API e também
 permitem informar o UUID manualmente.
 
+Antes de **Enviar mensagem por Chat ID**, o node consulta uma vez os atendentes do
+chat. Se o atendente principal ainda não tiver ingressado, o executor selecionado
+assume o atendimento automaticamente; se o atendimento já estiver em andamento,
+a mensagem é enviada diretamente.
+
 A operação **Enviar mensagem por telefone** executa automaticamente:
 
 ```text

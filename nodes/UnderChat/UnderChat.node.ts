@@ -41,6 +41,23 @@ function recordText(record: IDataObject, keys: string[]): string | undefined {
 	return undefined;
 }
 
+function attendantHasEntered(value: unknown): boolean {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+	const enteredAt = (value as IDataObject).entered_at;
+	return typeof enteredAt === 'string' ? enteredAt.trim().length > 0 : enteredAt != null;
+}
+
+function attendanceHasStarted(response: IDataObject): boolean {
+	const data = responseData(response);
+	if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+
+	const attendants = data as IDataObject;
+	if (attendantHasEntered(attendants.primary_user)) return true;
+
+	const secondaryUsers = attendants.secondary_users;
+	return Array.isArray(secondaryUsers) && secondaryUsers.some(attendantHasEntered);
+}
+
 function searchableResults(
 	response: IDataObject,
 	filter: string | undefined,
@@ -683,6 +700,24 @@ export class UnderChat implements INodeType {
 				} else if (operation === 'sendText') {
 					const chatId = this.getNodeParameter('chatId', itemIndex) as string;
 					const message = this.getNodeParameter('message', itemIndex) as string;
+					const attendantsResponse = await underChatApiRequest.call(
+						this,
+						'GET',
+						`/chat/${chatId}/attendants`,
+						{},
+						{},
+						executorId,
+					);
+					if (!attendanceHasStarted(attendantsResponse)) {
+						await underChatApiRequest.call(
+							this,
+							'PATCH',
+							`/chat/${chatId}/status`,
+							{ status: 'in_chat' },
+							{},
+							executorId,
+						);
+					}
 					const response = await underChatApiRequest.call(
 						this,
 						'POST',

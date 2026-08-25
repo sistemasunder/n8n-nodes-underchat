@@ -217,7 +217,11 @@ export class UnderChat implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Buscar Contato Por Telefone', value: 'findContactByPhone', action: 'Buscar contato por telefone' },
+					{
+						name: 'Buscar ID Do Contato Pelo Telefone',
+						value: 'findContactByPhone',
+						action: 'Buscar ID do contato pelo telefone',
+					},
 					{ name: 'Criar Contato', value: 'createContact', action: 'Criar contato' },
 				],
 				default: 'findContactByPhone',

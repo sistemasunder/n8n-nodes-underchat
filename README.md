@@ -4,7 +4,7 @@ Community Node do n8n para integrar workflows à API pública da UnderChat.
 
 ## Operações
 
-- Buscar contato por telefone
+- Buscar ID do contato pelo telefone
 - Criar contato
 - Enviar mensagem de texto por `chat_id`
 - Enviar mensagem por telefone, criando o contato quando necessário

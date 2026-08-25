@@ -52,9 +52,20 @@ function searchableResults(
 	for (const record of collectionRecords(response)) {
 		const value = getOpaqueId(record, idKeys);
 		if (!value) continue;
-		const firstName = recordText(record, nameKeys) ?? value;
-		const lastName = recordText(record, ['last_name', 'lastName']);
-		const name = lastName && !firstName.includes(lastName) ? `${firstName} ${lastName}` : firstName;
+		const firstName = recordText(record, nameKeys);
+		const lastName = recordText(record, [
+			'last_name',
+			'lastName',
+			'user_last_name',
+			'userLastName',
+			'surname',
+			'family_name',
+			'familyName',
+		]);
+		const name =
+			firstName && lastName && !firstName.toLocaleLowerCase('pt-BR').includes(lastName.toLocaleLowerCase('pt-BR'))
+				? `${firstName} ${lastName}`
+				: firstName || lastName || value;
 		if (
 			!normalizedFilter ||
 			name.toLocaleLowerCase('pt-BR').includes(normalizedFilter) ||
@@ -83,7 +94,18 @@ async function searchExecutors(
 		response,
 		filter,
 		['user_id', 'id'],
-		['name', 'display_name', 'full_name', 'email'],
+		[
+			'full_name',
+			'fullName',
+			'display_name',
+			'displayName',
+			'name',
+			'first_name',
+			'firstName',
+			'user_name',
+			'userName',
+			'email',
+		],
 	);
 }
 
@@ -140,7 +162,18 @@ async function searchUsers(
 		response,
 		filter,
 		['user_id', 'id'],
-		['name', 'display_name', 'full_name', 'email'],
+		[
+			'full_name',
+			'fullName',
+			'display_name',
+			'displayName',
+			'name',
+			'first_name',
+			'firstName',
+			'user_name',
+			'userName',
+			'email',
+		],
 	);
 }
 

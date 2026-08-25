@@ -198,10 +198,10 @@ export class UnderChat implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Chat', value: 'chat' },
 					{ name: 'Contato', value: 'contact' },
-					{ name: 'Diretório', value: 'directory' },
+					{ name: 'Listar', value: 'directory' },
 					{ name: 'Mensagem', value: 'message' },
+					{ name: 'Transferência', value: 'chat' },
 				],
 				default: 'message',
 			},
@@ -249,7 +249,11 @@ export class UnderChat implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Transferir Chat', value: 'transferChat', action: 'Transferir chat' },
+					{
+						name: 'Transferir Para Setor Ou Usuário',
+						value: 'transferChat',
+						action: 'Transferir chat para setor ou usuario',
+					},
 				],
 				default: 'transferChat',
 				displayOptions: { show: { resource: ['chat'] } },
@@ -321,8 +325,8 @@ export class UnderChat implements INodeType {
 				name: 'workerId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
-				description: 'Canal/worker usado para localizar, iniciar ou transferir o atendimento',
-				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone', 'transferChat']),
+				description: 'Canal/worker usado para localizar ou iniciar o atendimento',
+				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone']),
 				modes: [
 					{
 						displayName: 'Da Lista',
@@ -356,7 +360,48 @@ export class UnderChat implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				description: 'Setor inicial opcional para uma nova conversa',
-				displayOptions: showFor(['sendTextByPhone', 'transferChat']),
+				displayOptions: showFor(['sendTextByPhone']),
+				modes: [
+					{
+						displayName: 'Da Lista',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Buscar setor...',
+						typeOptions: {
+							searchListMethod: 'searchSectors',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Por ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'UUID do setor',
+					},
+				],
+			},
+			{
+				displayName: 'Tipo De Destino',
+				name: 'transferDestinationType',
+				type: 'options',
+				options: [
+					{ name: 'Setor', value: 'sector' },
+					{ name: 'Usuário', value: 'user' },
+				],
+				default: 'sector',
+				displayOptions: showFor(['transferChat']),
+			},
+			{
+				displayName: 'Setor De Destino',
+				name: 'destinationSectorId',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				description: 'Setor que receberá o atendimento',
+				displayOptions: {
+					show: { operation: ['transferChat'], transferDestinationType: ['sector'] },
+				},
 				modes: [
 					{
 						displayName: 'Da Lista',
@@ -379,11 +424,14 @@ export class UnderChat implements INodeType {
 			},
 			{
 				displayName: 'Usuário De Destino',
-				name: 'userId',
+				name: 'destinationUserId',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
-				description: 'Atendente que receberá o chat; opcional quando outro destino for informado',
-				displayOptions: showFor(['transferChat']),
+				required: true,
+				description: 'Atendente que receberá o chat',
+				displayOptions: {
+					show: { operation: ['transferChat'], transferDestinationType: ['user'] },
+				},
 				modes: [
 					{
 						displayName: 'Da Lista',
@@ -716,19 +764,28 @@ export class UnderChat implements INodeType {
 					};
 				} else if (operation === 'transferChat') {
 					const chatId = this.getNodeParameter('chatId', itemIndex) as string;
-					const workerId = resourceId(this.getNodeParameter('workerId', itemIndex, ''));
-					const userId = resourceId(this.getNodeParameter('userId', itemIndex, ''));
-					const sectorId = resourceId(this.getNodeParameter('sectorId', itemIndex, ''));
+					const destinationType = this.getNodeParameter(
+						'transferDestinationType',
+						itemIndex,
+					) as string;
+					const userId =
+						destinationType === 'user'
+							? resourceId(this.getNodeParameter('destinationUserId', itemIndex, ''))
+							: '';
+					const sectorId =
+						destinationType === 'sector'
+							? resourceId(this.getNodeParameter('destinationSectorId', itemIndex, ''))
+							: '';
 					const annotation = this.getNodeParameter('annotation', itemIndex, '') as string;
 					const keepInChat = this.getNodeParameter('keepInChat', itemIndex) as boolean;
 					const sendMessageOnTransfer = this.getNodeParameter(
 						'sendMessageOnTransfer',
 						itemIndex,
 					) as boolean;
-					if (!workerId && !userId && !sectorId) {
+					if (!userId && !sectorId) {
 						throw new NodeOperationError(
 							this.getNode(),
-							'Selecione ao menos um Worker, Usuário de Destino ou Setor',
+							'Selecione o setor ou usuário de destino',
 							{ itemIndex },
 						);
 					}
@@ -737,7 +794,6 @@ export class UnderChat implements INodeType {
 						'POST',
 						`/chat/${chatId}/transfer`,
 						withoutEmptyValues({
-							worker_id: workerId,
 							user_id: userId,
 							sector_id: sectorId,
 							annotation,

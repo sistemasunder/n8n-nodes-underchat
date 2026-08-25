@@ -542,6 +542,15 @@ export class UnderChat implements INodeType {
 				displayOptions: showFor(['listUsers', 'listSectors']),
 			},
 			{
+				displayName: 'Entrar No Atendimento Antes De Transferir',
+				name: 'enterBeforeTransfer',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to change the chat to in_chat with the selected executor before transferring it',
+				displayOptions: showFor(['transferChat']),
+			},
+			{
 				displayName: 'Anotação',
 				name: 'annotation',
 				type: 'string',
@@ -811,6 +820,10 @@ export class UnderChat implements INodeType {
 						destinationType === 'sector'
 							? resourceId(this.getNodeParameter('destinationSectorId', itemIndex, ''))
 							: '';
+					const enterBeforeTransfer = this.getNodeParameter(
+						'enterBeforeTransfer',
+						itemIndex,
+					) as boolean;
 					const annotation = this.getNodeParameter('annotation', itemIndex, '') as string;
 					const keepInChat = this.getNodeParameter('keepInChat', itemIndex) as boolean;
 					const sendMessageOnTransfer = this.getNodeParameter(
@@ -822,6 +835,16 @@ export class UnderChat implements INodeType {
 							this.getNode(),
 							'Selecione o setor ou usuário de destino',
 							{ itemIndex },
+						);
+					}
+					if (enterBeforeTransfer) {
+						await underChatApiRequest.call(
+							this,
+							'PATCH',
+							`/chat/${chatId}/status`,
+							{ status: 'in_chat' },
+							{},
+							executorId,
 						);
 					}
 					const response = await underChatApiRequest.call(

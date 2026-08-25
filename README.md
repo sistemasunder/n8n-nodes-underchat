@@ -22,6 +22,13 @@ A operação **Enviar mensagem por telefone** executa automaticamente:
 buscar contato → criar se necessário → iniciar conversa → enviar mensagem
 ```
 
+Na operação **Transferir para setor ou usuário**, ative **Entrar no atendimento
+antes de transferir** quando o chat ainda estiver aguardando atendimento. O node
+muda o status para `in_chat` e, após a confirmação da API, realiza a transferência.
+
+A API pública permite controlar a mensagem automática da transferência, mas não
+expõe uma opção equivalente para a mensagem de ingresso no atendimento.
+
 ## Requisitos
 
 - Node.js 22 ou superior

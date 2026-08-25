@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-underchat",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Community Node do n8n para automações com a UnderChat",
   "author": {
     "name": "UnderChat",

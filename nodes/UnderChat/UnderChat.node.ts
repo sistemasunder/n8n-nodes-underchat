@@ -48,12 +48,21 @@ export class UnderChat implements INodeType {
 				default: 'sendTextByPhone',
 			},
 			{
+				displayName: 'DDI',
+				name: 'phoneDdi',
+				type: 'string',
+				default: '55',
+				required: true,
+				description: 'Código do país sem o sinal de mais',
+				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone']),
+			},
+			{
 				displayName: 'Telefone',
 				name: 'phone',
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'Telefone com DDI, contendo somente números',
+				description: 'DDD e número, contendo somente números e sem o DDI',
 				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone']),
 			},
 			{
@@ -157,6 +166,7 @@ export class UnderChat implements INodeType {
 				let result: unknown;
 
 				if (operation === 'findContactByPhone') {
+					const phoneDdi = this.getNodeParameter('phoneDdi', itemIndex) as string;
 					const phone = this.getNodeParameter('phone', itemIndex) as string;
 					const workerId = this.getNodeParameter('workerId', itemIndex, '') as string;
 					const response = await underChatApiRequest.call(
@@ -164,10 +174,11 @@ export class UnderChat implements INodeType {
 						'GET',
 						'/chat/contacts/by-phone',
 						{},
-						withoutEmptyValues({ phone, worker_id: workerId }),
+						withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
 					);
 					result = responseData(response);
 				} else if (operation === 'createContact') {
+					const phoneDdi = this.getNodeParameter('phoneDdi', itemIndex) as string;
 					const phone = this.getNodeParameter('phone', itemIndex) as string;
 					const name = this.getNodeParameter('contactName', itemIndex) as string;
 					const workerId = this.getNodeParameter('workerId', itemIndex, '') as string;
@@ -178,7 +189,7 @@ export class UnderChat implements INodeType {
 						this,
 						'POST',
 						'/chat/contacts',
-						withoutEmptyValues({ name, phone, worker_id: workerId, ...extra }),
+						withoutEmptyValues({ name, phone_ddi: phoneDdi, phone, worker_id: workerId, ...extra }),
 					);
 					result = responseData(response);
 				} else if (operation === 'sendText') {
@@ -204,6 +215,7 @@ export class UnderChat implements INodeType {
 					);
 					result = responseData(response);
 				} else if (operation === 'sendTextByPhone') {
+					const phoneDdi = this.getNodeParameter('phoneDdi', itemIndex) as string;
 					const phone = this.getNodeParameter('phone', itemIndex) as string;
 					const name = this.getNodeParameter('contactName', itemIndex, '') as string;
 					const message = this.getNodeParameter('message', itemIndex) as string;
@@ -218,7 +230,7 @@ export class UnderChat implements INodeType {
 						'GET',
 						'/chat/contacts/by-phone',
 						{},
-						withoutEmptyValues({ phone, worker_id: workerId }),
+						withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
 					);
 					let contact = firstRecord(foundResponse);
 					let created = false;
@@ -230,7 +242,7 @@ export class UnderChat implements INodeType {
 							this,
 							'POST',
 							'/chat/contacts',
-							withoutEmptyValues({ name, phone, worker_id: workerId, ...extra }),
+							withoutEmptyValues({ name, phone_ddi: phoneDdi, phone, worker_id: workerId, ...extra }),
 						);
 						contact = firstRecord(createdResponse);
 						created = true;

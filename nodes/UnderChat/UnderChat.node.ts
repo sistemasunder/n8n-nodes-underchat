@@ -113,13 +113,15 @@ async function searchWorkers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	const executorId = await executorForSearch.call(this);
+	if (!executorId) return { results: [] };
 	const response = await underChatApiRequest.call(
 		this,
 		'GET',
 		'/chat/workers',
 		{},
 		{},
-		await executorForSearch.call(this),
+		executorId,
 	);
 	return searchableResults(
 		response,
@@ -133,6 +135,8 @@ async function searchSectors(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	const executorId = await executorForSearch.call(this);
+	if (!executorId) return { results: [] };
 	const operation = String(this.getCurrentNodeParameter('operation') ?? '');
 	const endpoint = operation === 'transferChat' ? '/chat/transfer/sectors' : '/chat/sectors';
 	const response = await underChatApiRequest.call(
@@ -141,7 +145,7 @@ async function searchSectors(
 		endpoint,
 		{},
 		{},
-		await executorForSearch.call(this),
+		executorId,
 	);
 	return searchableResults(response, filter, ['sector_id', 'id'], ['name', 'sector_name']);
 }
@@ -150,13 +154,15 @@ async function searchUsers(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
+	const executorId = await executorForSearch.call(this);
+	if (!executorId) return { results: [] };
 	const response = await underChatApiRequest.call(
 		this,
 		'GET',
 		'/chat/transfer/users',
 		{},
 		{},
-		await executorForSearch.call(this),
+		executorId,
 	);
 	return searchableResults(
 		response,
@@ -324,6 +330,7 @@ export class UnderChat implements INodeType {
 				displayName: 'Worker',
 				name: 'workerId',
 				type: 'resourceLocator',
+				typeOptions: { loadOptionsDependsOn: ['executorId.value'] },
 				default: { mode: 'list', value: '' },
 				description: 'Canal/worker usado para localizar ou iniciar o atendimento',
 				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone']),
@@ -358,6 +365,7 @@ export class UnderChat implements INodeType {
 				displayName: 'Setor',
 				name: 'sectorId',
 				type: 'resourceLocator',
+				typeOptions: { loadOptionsDependsOn: ['executorId.value'] },
 				default: { mode: 'list', value: '' },
 				description: 'Setor inicial opcional para uma nova conversa',
 				displayOptions: showFor(['sendTextByPhone']),
@@ -396,6 +404,7 @@ export class UnderChat implements INodeType {
 				displayName: 'Setor De Destino',
 				name: 'destinationSectorId',
 				type: 'resourceLocator',
+				typeOptions: { loadOptionsDependsOn: ['executorId.value'] },
 				default: { mode: 'list', value: '' },
 				required: true,
 				description: 'Setor que receberá o atendimento',
@@ -426,6 +435,7 @@ export class UnderChat implements INodeType {
 				displayName: 'Usuário De Destino',
 				name: 'destinationUserId',
 				type: 'resourceLocator',
+				typeOptions: { loadOptionsDependsOn: ['executorId.value'] },
 				default: { mode: 'list', value: '' },
 				required: true,
 				description: 'Atendente que receberá o chat',

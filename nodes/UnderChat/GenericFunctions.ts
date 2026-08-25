@@ -3,22 +3,29 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestMethods,
 	IHttpRequestOptions,
+	ILoadOptionsFunctions,
 } from 'n8n-workflow';
 
 export async function underChatApiRequest(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
+	executorId?: string,
 ): Promise<IDataObject> {
 	const credentials = await this.getCredentials('underChatApi');
 	const baseUrl = String(credentials.baseUrl).replace(/\/$/, '');
+	const legacyExecutorId = typeof credentials.userId === 'string' ? credentials.userId : '';
+	const resolvedExecutorId = executorId || legacyExecutorId;
 	const options: IHttpRequestOptions = {
 		method,
 		url: `${baseUrl}${endpoint}`,
 		json: true,
 	};
+	if (endpoint !== '/user/all' && resolvedExecutorId) {
+		options.headers = { 'x-underchat-user-id': resolvedExecutorId };
+	}
 
 	if (Object.keys(body).length > 0) options.body = body;
 	if (Object.keys(qs).length > 0) options.qs = qs;
@@ -32,6 +39,25 @@ export async function underChatApiRequest(
 
 export function responseData(response: IDataObject): unknown {
 	return response.data ?? response;
+}
+
+export function collectionRecords(value: unknown): IDataObject[] {
+	if (Array.isArray(value)) {
+		return value.filter(
+			(item): item is IDataObject => Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+		);
+	}
+	if (!value || typeof value !== 'object') return [];
+
+	const record = value as IDataObject;
+	for (const key of ['data', 'results', 'items', 'users', 'sectors', 'workers']) {
+		const nested = record[key];
+		if (nested !== undefined && nested !== value) {
+			const records = collectionRecords(nested);
+			if (records.length > 0) return records;
+		}
+	}
+	return [];
 }
 
 export function firstRecord(response: IDataObject): IDataObject | undefined {

@@ -25,14 +25,6 @@ export class UnderChatApi implements ICredentialType {
 			description: 'Token gerado em Integração → API pública no painel da UnderChat',
 		},
 		{
-			displayName: 'ID do Usuário Executor',
-			name: 'userId',
-			type: 'string',
-			default: '',
-			required: true,
-			description: 'UUID do usuário que executará as operações e cujas permissões serão aplicadas',
-		},
-		{
 			displayName: 'URL Base',
 			name: 'baseUrl',
 			type: 'string',
@@ -47,7 +39,6 @@ export class UnderChatApi implements ICredentialType {
 		properties: {
 			headers: {
 				keyapi: '={{$credentials.apiKey}}',
-				'x-underchat-user-id': '={{$credentials.userId}}',
 			},
 		},
 	};
@@ -55,8 +46,7 @@ export class UnderChatApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl.replace(/\\/$/, "")}}',
-			url: '/chat',
-			qs: { status: 'my_chats', per_page: 1 },
+			url: '/user/all',
 		},
 	};
 }

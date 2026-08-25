@@ -28,6 +28,9 @@
     "release": "n8n-node release"
   },
   "files": ["dist"],
+  "publishConfig": {
+    "access": "public"
+  },
   "n8n": {
     "n8nNodesApiVersion": 1,
     "strict": true,

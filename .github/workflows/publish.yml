@@ -84,7 +84,7 @@ jobs:
       - name: Validate package
         run: |
           pnpm run lint
-          pnpm run build
+          pnpm test
 
       - name: Stage package for npm review
         # Direct publishing with bypass-2FA tokens is being retired by npm.

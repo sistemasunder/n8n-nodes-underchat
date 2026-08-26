@@ -10,6 +10,9 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { executeBusinessHours } from './BusinessHours';
+import { businessHoursProperties } from './BusinessHoursDescription';
+
 import {
 	collectionRecords,
 	firstRecord,
@@ -211,9 +214,16 @@ export class UnderChat implements INodeType {
 		subtitle: '={{$parameter["operation"]}}',
 		defaults: { name: 'UnderChat' },
 		inputs: [NodeConnectionTypes.Main],
-		outputs: [NodeConnectionTypes.Main],
+		outputs:
+			'={{ $parameter.resource === "businessHours" ? [{ type: "main", displayName: "Dentro do horário" }, { type: "main", displayName: "Fora do horário" }] : ["main"] }}',
 		usableAsTool: true,
-		credentials: [{ name: 'underChatApi', required: true }],
+		credentials: [
+			{
+				name: 'underChatApi',
+				required: true,
+				displayOptions: { hide: { resource: ['businessHours'] } },
+			},
+		],
 		properties: [
 			{
 				displayName: 'Recurso',
@@ -221,13 +231,19 @@ export class UnderChat implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
+					{ name: 'Atendimento', value: 'chat' },
 					{ name: 'Contato', value: 'contact' },
+					{
+						name: 'Horário De Funcionamento',
+						value: 'businessHours',
+						displayOptions: { hide: { '@tool': [true] } },
+					},
 					{ name: 'Listar', value: 'directory' },
 					{ name: 'Mensagem', value: 'message' },
-					{ name: 'Atendimento', value: 'chat' },
 				],
 				default: 'message',
 			},
+			...businessHoursProperties,
 			{
 				displayName: 'Operação',
 				name: 'operation',
@@ -297,7 +313,9 @@ export class UnderChat implements INodeType {
 				default: { mode: 'list', value: '' },
 				required: true,
 				description: 'Usuário executor enviado no header x-underchat-user-ID',
-				displayOptions: { hide: { operation: ['listExecutors'] } },
+				displayOptions: {
+					hide: { operation: ['listExecutors'], resource: ['businessHours'] },
+				},
 				modes: [
 					{
 						displayName: 'Da Lista',
@@ -611,6 +629,9 @@ export class UnderChat implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		if (this.getNodeParameter('resource', 0, 'message') === 'businessHours') {
+			return await executeBusinessHours.call(this);
+		}
 		const items = this.getInputData();
 		const output: INodeExecutionData[] = [];
 

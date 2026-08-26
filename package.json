@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-underchat",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Community Node do n8n para automações com a UnderChat",
   "author": {
     "name": "UnderChat",
@@ -24,6 +24,7 @@
     "dev": "n8n-node dev",
     "lint": "n8n-node lint",
     "lint:fix": "n8n-node lint --fix",
+    "test": "npm run build && node --test",
     "prepublishOnly": "n8n-node prerelease",
     "release": "n8n-node release"
   },

@@ -41,6 +41,32 @@ export function responseData(response: IDataObject): unknown {
 	return response.data ?? response;
 }
 
+export async function underChatApiMultipartRequest(
+	this: IExecuteFunctions,
+	endpoint: string,
+	formData: IDataObject,
+	executorId: string,
+): Promise<IDataObject> {
+	const credentials = await this.getCredentials('underChatApi');
+	const baseUrl = String(credentials.baseUrl).replace(/\/$/, '');
+	const options: IHttpRequestOptions = {
+		method: 'POST',
+		url: `${baseUrl}${endpoint}`,
+		body: formData,
+		json: true,
+		headers: {
+			'content-type': 'multipart/form-data',
+			'x-underchat-user-id': executorId,
+		},
+	};
+
+	return (await this.helpers.httpRequestWithAuthentication.call(
+		this,
+		'underChatApi',
+		options,
+	)) as IDataObject;
+}
+
 export function collectionRecords(value: unknown): IDataObject[] {
 	if (Array.isArray(value)) {
 		return value.filter(

@@ -12,6 +12,11 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { executeBusinessHours } from './BusinessHours';
 import { businessHoursProperties } from './BusinessHoursDescription';
+import {
+	executeStartChatByPhone,
+	getOfficialTemplateVariables,
+	searchOfficialTemplates,
+} from './StartChatByPhone';
 
 import {
 	collectionRecords,
@@ -21,6 +26,7 @@ import {
 	parseJsonArray,
 	parseJsonObject,
 	responseData,
+	underChatApiMultipartRequest,
 	underChatApiRequest,
 	withoutEmptyValues,
 } from './GenericFunctions';
@@ -293,6 +299,11 @@ export class UnderChat implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Buscar/Criar Contato E Iniciar Atendimento',
+						value: 'startChatByPhone',
+						action: 'Buscar ou criar contato e iniciar atendimento',
+					},
+					{
 						name: 'Entrar No Atendimento',
 						value: 'enterAttendance',
 						action: 'Entrar no atendimento',
@@ -343,7 +354,7 @@ export class UnderChat implements INodeType {
 				default: '55',
 				required: true,
 				description: 'Código do país sem o sinal de mais',
-				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone']),
+				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone', 'startChatByPhone']),
 			},
 			{
 				displayName: 'Telefone',
@@ -352,7 +363,7 @@ export class UnderChat implements INodeType {
 				default: '',
 				required: true,
 				description: 'DDD e número, contendo somente números e sem o DDI',
-				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone']),
+				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone', 'startChatByPhone']),
 			},
 			{
 				displayName: 'Nome',
@@ -368,7 +379,7 @@ export class UnderChat implements INodeType {
 				type: 'string',
 				default: '',
 				description: 'Usado somente se o contato ainda não existir',
-				displayOptions: showFor(['sendTextByPhone']),
+				displayOptions: showFor(['sendTextByPhone', 'startChatByPhone']),
 			},
 			{
 				displayName: 'Worker',
@@ -377,7 +388,7 @@ export class UnderChat implements INodeType {
 				typeOptions: { loadOptionsDependsOn: ['executorId.value'] },
 				default: { mode: 'list', value: '' },
 				description: 'Canal/worker usado para localizar ou iniciar o atendimento',
-				displayOptions: showFor(['findContactByPhone', 'createContact', 'sendTextByPhone']),
+				displayOptions: showFor(['createContact', 'sendTextByPhone']),
 				modes: [
 					{
 						displayName: 'Da Lista',
@@ -399,11 +410,40 @@ export class UnderChat implements INodeType {
 				],
 			},
 			{
+				displayName: 'Canal',
+				name: 'workerId',
+				type: 'resourceLocator',
+				typeOptions: { loadOptionsDependsOn: ['executorId.value'] },
+				default: { mode: 'list', value: '' },
+				required: true,
+				description: 'Canal/worker obrigatório para abrir o atendimento',
+				displayOptions: showFor(['startChatByPhone']),
+				modes: [
+					{
+						displayName: 'Da Lista',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Buscar canal...',
+						typeOptions: {
+							searchListMethod: 'searchWorkers',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Por ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'UUID do canal',
+					},
+				],
+			},
+			{
 				displayName: 'Criar Se Não Existir',
 				name: 'createIfMissing',
 				type: 'boolean',
 				default: true,
-				displayOptions: showFor(['sendTextByPhone']),
+				displayOptions: showFor(['sendTextByPhone', 'startChatByPhone']),
 			},
 			{
 				displayName: 'Setor',
@@ -413,6 +453,35 @@ export class UnderChat implements INodeType {
 				default: { mode: 'list', value: '' },
 				description: 'Setor inicial opcional para uma nova conversa',
 				displayOptions: showFor(['sendTextByPhone']),
+				modes: [
+					{
+						displayName: 'Da Lista',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Buscar setor...',
+						typeOptions: {
+							searchListMethod: 'searchSectors',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Por ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'UUID do setor',
+					},
+				],
+			},
+			{
+				displayName: 'Setor',
+				name: 'sectorId',
+				type: 'resourceLocator',
+				typeOptions: { loadOptionsDependsOn: ['executorId.value'] },
+				default: { mode: 'list', value: '' },
+				required: true,
+				description: 'Setor inicial obrigatório para abrir o atendimento',
+				displayOptions: showFor(['startChatByPhone']),
 				modes: [
 					{
 						displayName: 'Da Lista',
@@ -553,6 +622,95 @@ export class UnderChat implements INodeType {
 				displayOptions: showFor(['sendOfficialTemplate']),
 			},
 			{
+				displayName: 'Template Oficial',
+				name: 'officialTemplate',
+				type: 'resourceLocator',
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'executorId.value',
+						'workerId.value',
+						'sectorId.value',
+						'phoneDdi',
+						'phone',
+					],
+				},
+				default: { mode: 'list', value: '' },
+				description:
+					'Template aprovado para o canal oficial. Se a janela exigir template, a seleção será obrigatória na execução.',
+				displayOptions: showFor(['startChatByPhone']),
+				modes: [
+					{
+						displayName: 'Da Lista',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Buscar template aprovado...',
+						typeOptions: {
+							searchListMethod: 'searchOfficialTemplates',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+					{
+						displayName: 'Por Nome E Idioma',
+						name: 'id',
+						type: 'string',
+						placeholder: 'notifica_usuario::pt_BR',
+					},
+				],
+			},
+			{
+				displayName: 'Preenchimento Das Variáveis',
+				name: 'templateVariableInputMode',
+				type: 'options',
+				options: [
+					{ name: 'Campos Do Template', value: 'fields' },
+					{ name: 'JSON Avançado', value: 'json' },
+				],
+				default: 'fields',
+				displayOptions: showFor(['startChatByPhone']),
+			},
+			{
+				displayName: 'Variáveis Do Template',
+				name: 'officialTemplateVariables',
+				type: 'resourceMapper',
+				default: { mappingMode: 'defineBelow', value: null },
+				noDataExpression: true,
+				typeOptions: {
+					loadOptionsDependsOn: [
+						'executorId.value',
+						'workerId.value',
+						'sectorId.value',
+						'phoneDdi',
+						'phone',
+						'officialTemplate.value',
+					],
+					resourceMapper: {
+						resourceMapperMethod: 'getOfficialTemplateVariables',
+						mode: 'map',
+						valuesLabel: 'Valores Das Variáveis',
+						fieldWords: { singular: 'variável', plural: 'variáveis' },
+						addAllFields: true,
+						multiKeyMatch: false,
+						supportAutoMap: false,
+						showTypeConversionOptions: false,
+					},
+				},
+				displayOptions: {
+					show: { operation: ['startChatByPhone'], templateVariableInputMode: ['fields'] },
+				},
+			},
+			{
+				displayName: 'Variáveis Do Template (JSON)',
+				name: 'officialTemplateVariablesJson',
+				type: 'json',
+				default: '[]',
+				description:
+					'Fallback avançado. Cada item deve conter key, component_type, index, value e, quando aplicável, parameter_name e button_index.',
+				displayOptions: {
+					show: { operation: ['startChatByPhone'], templateVariableInputMode: ['json'] },
+				},
+			},
+			{
 				displayName: 'Busca',
 				name: 'search',
 				type: 'string',
@@ -614,7 +772,7 @@ export class UnderChat implements INodeType {
 				type: 'json',
 				default: '{}',
 				description: 'Campos opcionais aceitos pela API para criação do contato',
-				displayOptions: showFor(['createContact', 'sendTextByPhone']),
+				displayOptions: showFor(['createContact', 'sendTextByPhone', 'startChatByPhone']),
 			},
 		],
 	};
@@ -622,9 +780,13 @@ export class UnderChat implements INodeType {
 	methods = {
 		listSearch: {
 			searchExecutors,
+			searchOfficialTemplates,
 			searchSectors,
 			searchUsers,
 			searchWorkers,
+		},
+		resourceMapping: {
+			getOfficialTemplateVariables,
 		},
 	};
 
@@ -680,16 +842,17 @@ export class UnderChat implements INodeType {
 						executorId,
 					);
 					result = responseData(response);
+				} else if (operation === 'startChatByPhone') {
+					result = await executeStartChatByPhone.call(this, itemIndex, executorId);
 				} else if (operation === 'findContactByPhone') {
 					const phoneDdi = this.getNodeParameter('phoneDdi', itemIndex) as string;
 					const phone = this.getNodeParameter('phone', itemIndex) as string;
-					const workerId = resourceId(this.getNodeParameter('workerId', itemIndex, ''));
 					const response = await underChatApiRequest.call(
 						this,
 						'GET',
 						'/chat/contacts/by-phone',
 						{},
-						withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
+						withoutEmptyValues({ phone_ddi: phoneDdi, phone }),
 						executorId,
 					);
 					result = responseData(response);
@@ -701,12 +864,10 @@ export class UnderChat implements INodeType {
 					const extra = parseJsonObject(
 						this.getNodeParameter('additionalFields', itemIndex, '{}') as string,
 					);
-					await underChatApiRequest.call(
+					await underChatApiMultipartRequest.call(
 						this,
-						'POST',
 						'/chat/contacts',
-						withoutEmptyValues({ name, phone_ddi: phoneDdi, phone, worker_id: workerId, ...extra }),
-						{},
+						withoutEmptyValues({ ...extra, name, phone_ddi: phoneDdi, phone, channel_ids: [workerId] }),
 						executorId,
 					);
 					const foundResponse = await underChatApiRequest.call(
@@ -714,7 +875,7 @@ export class UnderChat implements INodeType {
 						'GET',
 						'/chat/contacts/by-phone',
 						{},
-						withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
+						withoutEmptyValues({ phone_ddi: phoneDdi, phone }),
 						executorId,
 					);
 					result = responseData(foundResponse);
@@ -782,7 +943,7 @@ export class UnderChat implements INodeType {
 							'GET',
 							'/chat/contacts/by-phone',
 							{},
-							withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
+							withoutEmptyValues({ phone_ddi: phoneDdi, phone }),
 							executorId,
 						);
 						contact = firstRecord(foundResponse);
@@ -796,18 +957,16 @@ export class UnderChat implements INodeType {
 					if (!getOpaqueId(contact, ['contact_id', 'id'])) {
 						if (!createIfMissing) throw new NodeOperationError(this.getNode(), 'Contato não encontrado', { itemIndex });
 						if (!name) throw new NodeOperationError(this.getNode(), 'Informe o nome para criar o contato', { itemIndex });
-						await underChatApiRequest.call(
+						await underChatApiMultipartRequest.call(
 							this,
-							'POST',
 							'/chat/contacts',
 							withoutEmptyValues({
+								...extra,
 								name,
 								phone_ddi: phoneDdi,
 								phone,
-								worker_id: workerId,
-								...extra,
+								channel_ids: [workerId],
 							}),
-							{},
 							executorId,
 						);
 						const refreshedResponse = await underChatApiRequest.call(
@@ -815,7 +974,7 @@ export class UnderChat implements INodeType {
 							'GET',
 							'/chat/contacts/by-phone',
 							{},
-							withoutEmptyValues({ phone_ddi: phoneDdi, phone, worker_id: workerId }),
+							withoutEmptyValues({ phone_ddi: phoneDdi, phone }),
 							executorId,
 						);
 						contact = firstRecord(refreshedResponse);

@@ -8,6 +8,7 @@ Community Node do n8n para integrar workflows à API pública da UnderChat.
 - Entrar em um atendimento aguardando com o executor selecionado
 - Buscar ID do contato pelo telefone
 - Criar contato
+- Buscar/criar o contato e iniciar um atendimento em uma única operação
 - Enviar mensagem de texto por `chat_id`
 - Enviar mensagem por telefone, criando o contato quando necessário
 - Enviar template oficial em uma conversa
@@ -27,6 +28,64 @@ A operação **Enviar mensagem por telefone** executa automaticamente:
 ```text
 buscar contato → criar se necessário → iniciar conversa → enviar mensagem
 ```
+
+## Buscar/criar contato e iniciar atendimento
+
+A operação **Buscar/Criar Contato E Iniciar Atendimento** (`startChatByPhone`)
+substitui a sequência manual de nodes usada para localizar ou cadastrar o contato,
+obter seu ID e abrir a conversa. Ela recebe o telefone diretamente e executa:
+
+```text
+buscar pelo telefone → criar se não existir → buscar o ID novamente
+→ validar canal e setor → reutilizar um chat ativo ou iniciar o atendimento
+```
+
+Configure os seguintes campos:
+
+- **Executor:** usuário ativo que realiza as chamadas à API.
+- **DDI** e **Telefone:** usados na busca exata; informe o telefone sem o DDI.
+- **Nome para novo contato:** usado somente quando o contato não existe.
+- **Criar se não existir:** ativado por padrão. Quando desativado, a operação falha
+  sem criar dados caso o telefone não seja encontrado.
+- **Canal:** obrigatório em toda nova abertura, oficial ou não.
+- **Setor:** obrigatório em toda nova abertura, oficial ou não.
+- **Template oficial** e **Variáveis:** usados quando as regras do canal oficial
+  exigirem um template aprovado.
+
+O usuário não precisa consultar nem transportar o `contact_id`. A API de criação
+de contato não devolve esse ID; por isso o node consulta novamente o telefone após
+uma criação bem-sucedida e só então inicia o atendimento. Se já existir um chat
+ativo no mesmo canal e setor, ele é reutilizado em vez de criar outro. Um chat no
+mesmo canal, mas em outro setor, não é movido silenciosamente: use a operação de
+transferência ou selecione o setor atual.
+
+O cadastro do contato e a abertura do atendimento são chamadas separadas da API.
+Se a criação funcionar e uma validação posterior ou a abertura falhar, o contato
+permanece cadastrado. Uma nova execução o localizará e reutilizará, sem duplicá-lo.
+
+### Canal oficial e templates
+
+Depois de resolver o contato, o node consulta o contexto oficial usando o canal e
+o `contact_id`. Ele respeita a janela retornada pela UnderChat:
+
+- texto livre só pode ser enviado quando `can_send_freeform` permitir;
+- um template só pode ser usado quando estiver aprovado e disponível no contexto;
+- quando `requires_template` estiver ativo, a abertura não continua sem um template
+  aprovado e todos os valores obrigatórios;
+- `key`, componente, posição, nome do parâmetro e índice de botão vêm da API; o
+  usuário informa apenas os valores das variáveis, pelos campos ou em JSON;
+- o template é enviado junto da abertura do chat, evitando depender de um
+  `chat_id` criado em um node anterior.
+
+O campo **Template oficial** usa o seletor do n8n e também permite informar o nome
+manualmente. A API pública lista os templates no contexto oficial, que exige um
+`contact_id`. Quando o telefone é dinâmico ou o contato ainda não existe, o node
+usa um contato já vinculado ao canal somente para carregar o catálogo no editor,
+sem criar nem alterar dados. Na execução, ele consulta novamente o contexto com o
+contato real e recusa qualquer template que não esteja aprovado ou cujas variáveis
+não correspondam ao contrato retornado. Se o canal ainda não tiver nenhum contato,
+o catálogo não poderá ser carregado antecipadamente; nesse caso ainda é possível
+usar o modo manual/JSON, com a mesma validação rigorosa durante a execução.
 
 Na operação **Transferir para setor ou usuário**, ative **Entrar no atendimento
 antes de transferir** quando o chat ainda estiver aguardando atendimento. O node
